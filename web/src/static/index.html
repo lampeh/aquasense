@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Aquarium - Attraktor e.V.</title>
+	<link rel="stylesheet" href="css/common.min.css">
+	<meta charset="utf-8">
+	<meta http-equiv="refresh" content="7200">
+</head>
+<body>
+<div>
+<!-- <h1>Aquarium</h1> -->
+<div id="charts">
+	<div class="chart chart_recent" data-y-units="&deg;C" data-reload="11000" data-suffix="/mean" data-points=false></div>
+	<div class="chart chart_recent" data-y-units="&deg;C" data-reload="11000" data-suffix="/mean" data-points=false></div>
+</div>
+<script>
+const expire = 7.5 * 86400 * 1000;
+const mqttdb_url = "http://mqttdb.aqua.attraktor.org/";
+const sensors = [{
+	"aqua/sensors/temp/28fc72cc03000030": {label: "Raumtemperatur"}, 
+	"aqua/sensors/temp/28ffd2339115019b": {label: "Linkes Becken"}, 
+	"aqua/sensors/temp/28ff35599115019b": {label: "Rechtes Becken"},
+}, {
+	"aqua/sensors/temp/28ff6b1c91150371": {label: "Aussen Nordseite", color: "#FF44AA"}
+}];
+</script>
+<script src="js/charts.min.js"></script>
+</body>
+</html>
