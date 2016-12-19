@@ -50,10 +50,11 @@ mongodb.connect(dbURL, dbOptions)
 .then((coll) => {
 	const router = express.Router();
 
-	// /combine/topic1,topic2,... - generate JSON array ESI template
-	// /topic                     - retrieve full data set
-	// /topic/past/300000         - retrieve latest data
-	// /topic/diff/1483228800000  - retrieve new data since timestamp
+	// /combine/topic1,topic2,...              - generate JSON array ESI template
+	// /topic                                  - retrieve full data set
+	// /topic/past/300000                      - retrieve latest data
+	// /topic/diff/1483228800000               - retrieve new data since timestamp
+	// /topic/diff/1483228800000/1483230800000 - retrieve data between timestamps
 
 	// no support for mqtt topics starting with combine/
 	// no full support for mqtt topics ending in /past/nnn or /diff/nnn
@@ -89,15 +90,22 @@ mongodb.connect(dbURL, dbOptions)
 	});
 
 	// retrieve data
-	router.get(["/:topic(*)/:cmd(diff|past)/:base([0-9]+)", "/:topic(*)"], (req, res, next) => {
+	router.get([
+		"/:topic(*)/:cmd(diff)/:base([0-9]+)/:end([0-9]+)",
+		"/:topic(*)/:cmd(diff|past)/:base([0-9]+)",
+		"/:topic(*)"
+	], (req, res, next) => {
 		let query = {topic: req.params.topic};
 		let base = undefined;
 
 		switch (req.params.cmd) {
 			case "diff":
-				debug("Diff:", req.params.topic, req.params.base);
+				debug("Diff:", req.params.topic, req.params.base, req.params.end);
 				base = new Date(parseInt(req.params.base));
 				query.createdAt = {$gt: base};
+				if (req.params.end) {
+					query.createdAt.$lt = new Date(parseInt(req.params.end));
+				}
 				break;
 
 			case "past":
