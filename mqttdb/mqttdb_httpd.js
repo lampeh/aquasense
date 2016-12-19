@@ -96,13 +96,11 @@ mongodb.connect(dbURL, dbOptions)
 		"/:topic(*)"
 	], (req, res, next) => {
 		let query = {topic: req.params.topic};
-		let base = undefined;
 
 		switch (req.params.cmd) {
 			case "diff":
 				debug("Diff:", req.params.topic, req.params.base, req.params.end);
-				base = new Date(parseInt(req.params.base));
-				query.createdAt = {$gt: base};
+				query.createdAt = {$gt: new Date(parseInt(req.params.base))};
 				if (req.params.end) {
 					query.createdAt.$lt = new Date(parseInt(req.params.end));
 				}
@@ -150,7 +148,7 @@ mongodb.connect(dbURL, dbOptions)
 				// TODO: think again: why?
 				// - conditional headers are bigger than []
 				// + varnish can re-use the same cache object
-				base && res.set("Last-Modified", base.toUTCString());
+				res.set("ETag", "empty-json-array");
 
 				// short negative-cache TTL
 				res.set("Cache-Control", "s-maxage=10");
