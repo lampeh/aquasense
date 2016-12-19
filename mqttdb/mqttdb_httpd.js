@@ -6,8 +6,9 @@ const http = require("http");
 
 const express = require("express");
 const morgan = require("morgan");
-const compression = require('compression');
-const responseTime = require('response-time');
+const compression = require("compression");
+const responseTime = require("response-time");
+const cors = require("cors");
 
 const mongodb = require("mongodb").MongoClient;
 const JSONStream = require("JSONStream")
@@ -57,6 +58,8 @@ mongodb.connect(dbURL, dbOptions)
 	// no support for mqtt topics starting with combine/
 	// no full support for mqtt topics ending in /past/nnn or /diff/nnn
 	// /combine topic character set restricted to /[a-z0-9_/-]/i
+
+	router.use(cors({origin: true}));
 
 	// content is always JSON
 	router.use((req, res, next) => {
@@ -181,6 +184,7 @@ mongodb.connect(dbURL, dbOptions)
 		stream: fs.createWriteStream(path.join(__dirname, "log", "access.log"), {flags: "a"})
 	}));
 
+/*
 	// handle Origin
 	app.use((req, res, next) => {
 		// caches must store variants based on request Origin
@@ -202,6 +206,7 @@ mongodb.connect(dbURL, dbOptions)
 
 		next();
 	});
+*/
 
 	// mount mqttdb router
 	app.use("/", router);

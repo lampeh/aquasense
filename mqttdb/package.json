@@ -6,6 +6,7 @@
     "JSONStream": "~1",
     "compression": "~1",
     "config": "~1",
+    "cors": "~2",
     "debug": "~2",
     "express": "~4",
     "mongodb": "~2",
