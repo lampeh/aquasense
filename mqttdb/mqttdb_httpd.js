@@ -25,13 +25,17 @@ const dbOptions = config.db.options || {};
 const dbCollection = config.db.collection || "mqttdb";
 
 
+// TODO: no longer required. maybe remove this
 module.exports = () => {
+
+// TODO: "Topology was destroyed" errors not handled, reconnect
 
 mongodb.connect(dbURL, dbOptions)
 .then((db) => new Promise((resolve, reject) => {
+	debug("MongoDB connected");
+
 	// db.collection() requires a callback in strict-mode
 	// TODO: think again. maybe there's a reason to it
-	debug("MongoDB connected");
 	db.collection(dbCollection, {strict: true}, (err, coll) => {
 		if (err) {
 			reject(err);
@@ -42,6 +46,16 @@ mongodb.connect(dbURL, dbOptions)
 }))
 .then((coll) => {
 	const router = express.Router();
+
+	// no support for mqtt topics starting with combine/
+	// no full support for mqtt topics ending in /past/nnn or /diff/nnn
+	// /combine topic character set restricted to /[a-z0-9_/-]/i
+
+	// /combine/topic1,topic2,... - generate JSON array ESI template
+	// /topic                     - retrieve full data set
+	// /topic/past/300000         - retrieve latest data
+	// /topic/diff/1483228800000  - retrieve new data since timestamp
+
 
 	// content is always JSON
 	router.use((req, res, next) => {
@@ -64,8 +78,8 @@ mongodb.connect(dbURL, dbOptions)
 		res.send(`[${req.params[0].split(",").map(key => `<esi:include src="/${key.replace(/[^a-z0-9_/-]+/gi, "")}"/>`).join(",")}]`);
 	});
 
-	// no full support for mqtt topics ending in /past/nnn or /diff/nnn
-	router.get(["/:topic(*)/:cmd(diff|past)/:base([0-9]+)", "/:topic(*)"], (req, res) => {
+	// retrieve data
+	router.get(["/:topic(*)/:cmd(diff|past)/:base([0-9]+)", "/:topic(*)"], (req, res, next) => {
 		let query = {topic: req.params.topic};
 		let base = undefined;
 
@@ -78,8 +92,7 @@ mongodb.connect(dbURL, dbOptions)
 
 			case "past":
 				debug("Past:", req.params.topic, req.params.base);
-				base = new Date(Date.now() - parseInt(req.params.base));
-				query.createdAt = {$gt: base};
+				query.createdAt = {$gt: new Date(Date.now() - parseInt(req.params.base))};
 				break;
 
 			default:
@@ -95,7 +108,7 @@ mongodb.connect(dbURL, dbOptions)
 				// client loops over cached diffs, so the proxy can keep them
 				res.set("Cache-Control", "max-age=120, s-maxage=300, public");
 
-				// TODO: no Last-Modified header. Maybe fetch last record first
+				// TODO: no Last-Modified header. maybe fetch last record first
 				// or rewrite frontend to use reverse sort order
 
 				// TODO: writing every record as separate HTTP chunk. performance?
@@ -119,19 +132,24 @@ mongodb.connect(dbURL, dbOptions)
 				// TODO: think again: why?
 				// - conditional headers are bigger than []
 				// + varnish can re-use the same cache object
-				if (req.params.cmd === "diff") {
-					res.set("Last-Modified", base.toUTCString());
-				}
+				base && res.set("Last-Modified", base.toUTCString());
 
-				// short negative cache TTL
+				// short negative-cache TTL
 				res.set("Cache-Control", "s-maxage=10");
 				res.send("[]");
 			}
 		})
-		.catch((err) => {
-			debug("Error in response:", err);
-			res.status(500).set("Cache-Control", "no-cache").json({error: err.toString()});
-		});
+		.catch(next);
+	});
+
+	router.use((err, req, res, next) => {
+		debug("Error in response:", err);
+
+		if (res.headersSent) {
+			return next(err)
+		}
+
+		res.status(500).set("Cache-Control", "no-cache").json({error: err.toString()});
 	});
 
 	return router;
@@ -145,14 +163,16 @@ mongodb.connect(dbURL, dbOptions)
 	app.enable("strict routing");
 
 	// write access log
-	// TODO: think about logrotate
+	// TODO: think about logrotate & make file path configurable
 	app.use(morgan("combined", {
 		stream: fs.createWriteStream(path.join(__dirname, "log", "access.log"), {flags: "a"})
 	}));
 
 	// handle Origin
 	app.use((req, res, next) => {
-		res.vary("Origin"); // caches must store variants based on request Origin
+		// caches must store variants based on request Origin
+		// our response AC-Allow-Headers/Methods don't vary
+		res.vary("Origin");
 
 		// set CORS headers
 		if (req.headers.origin) {
@@ -170,10 +190,12 @@ mongodb.connect(dbURL, dbOptions)
 		next();
 	});
 
+	// mount mqttdb router
 	app.use("/", router);
 
 	// TODO: IPC disconnect should kill the server(s) after timeout
 	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map(host => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
+
 /*
 	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map(host => new Promise((resolve, reject) => {
 		const server = http.createServer(app);
@@ -202,6 +224,7 @@ mongodb.connect(dbURL, dbOptions)
 })
 .catch((err) => {
 	if (err.code == "EADDRINUSE") {
+		// ignore EADDRINUSE
 		debug(`Address ${err.address}:${err.port} already in use`);
 	} else {
 		debug("Fatal error");
@@ -210,6 +233,7 @@ mongodb.connect(dbURL, dbOptions)
 		process.exit(1);
 	}
 });
+
 };
 
 // run stand-alone if not require'd
