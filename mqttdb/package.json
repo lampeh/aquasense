@@ -10,7 +10,8 @@
     "express": "~4",
     "mongodb": "~2",
     "morgan": "~1",
-    "mqtt": "~2"
+    "mqtt": "~2",
+    "response-time": "~2"
   },
   "scripts": {}
 }

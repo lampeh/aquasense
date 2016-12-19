@@ -6,7 +6,8 @@ const http = require("http");
 
 const express = require("express");
 const morgan = require("morgan");
-var compression = require('compression');
+const compression = require('compression');
+const responseTime = require('response-time');
 
 const mongodb = require("mongodb").MongoClient;
 const JSONStream = require("JSONStream")
@@ -48,15 +49,14 @@ mongodb.connect(dbURL, dbOptions)
 .then((coll) => {
 	const router = express.Router();
 
-	// no support for mqtt topics starting with combine/
-	// no full support for mqtt topics ending in /past/nnn or /diff/nnn
-	// /combine topic character set restricted to /[a-z0-9_/-]/i
-
 	// /combine/topic1,topic2,... - generate JSON array ESI template
 	// /topic                     - retrieve full data set
 	// /topic/past/300000         - retrieve latest data
 	// /topic/diff/1483228800000  - retrieve new data since timestamp
 
+	// no support for mqtt topics starting with combine/
+	// no full support for mqtt topics ending in /past/nnn or /diff/nnn
+	// /combine topic character set restricted to /[a-z0-9_/-]/i
 
 	// content is always JSON
 	router.use((req, res, next) => {
@@ -69,8 +69,8 @@ mongodb.connect(dbURL, dbOptions)
 		debug("Combine:", req.params[0]);
 
 		// TODO: force compression even on short response
-		// because compression middleware adds Vary: Accept-Encoding without compressing
-		// the response, varnish un-gzips all sub-requests
+		// because compression middleware adds Vary: Accept-Encoding
+		// without compressing the response, varnish un-gzips all sub-requests
 		// see https://github.com/expressjs/compression#threshold
 
 		// Cache-Control for the combined set. no Last-Modified
@@ -148,6 +148,7 @@ mongodb.connect(dbURL, dbOptions)
 		.catch(next);
 	});
 
+	// return errors as JSON
 	router.use((err, req, res, next) => {
 		debug("Error in response:", err);
 
@@ -167,6 +168,9 @@ mongodb.connect(dbURL, dbOptions)
 	app.disable("query parser");
 	app.disable("x-powered-by");
 	app.enable("strict routing");
+
+	// record the response time
+	app.use(responseTime());
 
 	// compress some responses
 	app.use(compression());
