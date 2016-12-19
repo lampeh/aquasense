@@ -59,6 +59,7 @@ mongodb.connect(dbURL, dbOptions)
 	// no full support for mqtt topics ending in /past/nnn or /diff/nnn
 	// /combine topic character set restricted to /[a-z0-9_/-]/i
 
+	// allow any Origin
 	router.use(cors({origin: true}));
 
 	// content is always JSON
@@ -183,30 +184,6 @@ mongodb.connect(dbURL, dbOptions)
 	app.use(morgan("combined", {
 		stream: fs.createWriteStream(path.join(__dirname, "log", "access.log"), {flags: "a"})
 	}));
-
-/*
-	// handle Origin
-	app.use((req, res, next) => {
-		// caches must store variants based on request Origin
-		// our response AC-Allow-Headers/Methods don't vary
-		res.vary("Origin");
-
-		// set CORS headers
-		if (req.headers.origin) {
-			// TODO: restrict if necessary. maybe check AC-Request-Headers
-			// debug("Origin allowed:", req.headers.origin);
-
-			res.set({
-				"Access-Control-Allow-Origin": req.headers.origin,
-				"Access-Control-Allow-Methods": "GET",
-				"Access-Control-Allow-Headers": "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type",
-				"Access-Control-Max-Age": "3600"
-			});
-		}
-
-		next();
-	});
-*/
 
 	// mount mqttdb router
 	app.use("/", router);
