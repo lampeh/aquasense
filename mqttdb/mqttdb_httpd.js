@@ -6,6 +6,7 @@ const http = require("http");
 
 const express = require("express");
 const morgan = require("morgan");
+var compression = require('compression');
 
 const mongodb = require("mongodb").MongoClient;
 const JSONStream = require("JSONStream")
@@ -66,6 +67,11 @@ mongodb.connect(dbURL, dbOptions)
 	// generate ESI template
 	router.get("/combine/*", (req, res) => {
 		debug("Combine:", req.params[0]);
+
+		// TODO: force compression even on short response
+		// because compression middleware adds Vary: Accept-Encoding without compressing
+		// the response, varnish un-gzips all sub-requests
+		// see https://github.com/expressjs/compression#threshold
 
 		// Cache-Control for the combined set. no Last-Modified
 		// v-maxage controls varnish cache TTL for the template only
@@ -162,6 +168,9 @@ mongodb.connect(dbURL, dbOptions)
 	app.disable("x-powered-by");
 	app.enable("strict routing");
 
+	// compress some responses
+	app.use(compression());
+
 	// write access log
 	// TODO: think about logrotate & make file path configurable
 	app.use(morgan("combined", {
@@ -193,7 +202,7 @@ mongodb.connect(dbURL, dbOptions)
 	// mount mqttdb router
 	app.use("/", router);
 
-	// TODO: IPC disconnect should kill the server(s) after timeout
+	// TODO: cluster IPC disconnect should kill the server(s) after timeout
 	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map(host => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
 
 /*
