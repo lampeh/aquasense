@@ -36,6 +36,13 @@ module.exports = {
         "no-duplicate-imports": "warn",
         "no-useless-computed-key": "warn",
         "no-useless-constructor": "warn",
-        "no-var": "warn"
+        "no-var": "warn",
+        "yoda": "warn",
+        "complexity": "warn",
+        "curly": "warn",
+        "dot-location": [ "warn", "property" ],
+        "eqeqeq": "warn",
+        "no-multi-spaces": "warn",
+        "strict": "error"
     }
 };

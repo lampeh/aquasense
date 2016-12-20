@@ -203,7 +203,7 @@ mongodb.connect(dbURL, dbOptions)
 		server.on("listening", resolve);
 
 		server.on("error", (err) => {
-			if (err.code == "EADDRINUSE") {
+			if (err.code === "EADDRINUSE") {
 				let retry = 1000 + Math.floor(Math.random() * 1000);
 				debug(`Address ${host}:${appPort} already in use. Retrying in ${retry}ms`);
 				setTimeout(() => {
@@ -223,9 +223,8 @@ mongodb.connect(dbURL, dbOptions)
 	debug("All listeners started");
 })
 .catch((err) => {
-	if (err.code == "EADDRINUSE") {
-		// ignore EADDRINUSE
-		debug(`Address ${err.address}:${err.port} already in use`);
+	if (err.code === "EADDRINUSE" || err.code === "EADDRNOTAVAIL") {
+		debug(`Address ${err.address}:${err.port} not available`);
 	} else {
 		debug("Fatal error");
 		debug(err.toString());
