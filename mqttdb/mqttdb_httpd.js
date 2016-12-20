@@ -2,7 +2,6 @@
 
 const fs = require("fs");
 const path = require("path");
-const http = require("http");
 
 const express = require("express");
 const morgan = require("morgan");
@@ -11,7 +10,7 @@ const responseTime = require("response-time");
 const cors = require("cors");
 
 const mongodb = require("mongodb").MongoClient;
-const JSONStream = require("JSONStream")
+const JSONStream = require("JSONStream");
 
 const debug = require("debug")(`mqttdb:httpd:${process.id || process.pid}`);
 //const debug = console.log.bind(console);
@@ -112,7 +111,7 @@ mongodb.connect(dbURL, dbOptions)
 				break;
 
 			default:
-				debug("Full:", query.topic);
+				debug("Full:", req.params.topic);
 				break;
 		}
 
@@ -133,7 +132,7 @@ mongodb.connect(dbURL, dbOptions)
 
 				cursor.stream({transform: doc => {
 					try {
-						return [doc.createdAt.getTime(), doc.message]
+						return [doc.createdAt.getTime(), doc.message];
 					} catch(err) {
 						debug("Error in result stream:", err);
 						return undefined;
@@ -163,7 +162,7 @@ mongodb.connect(dbURL, dbOptions)
 		debug("Error in response:", err);
 
 		if (res.headersSent) {
-			return next(err)
+			return next(err);
 		}
 
 		res.status(500).set("Cache-Control", "no-cache").json({error: err.toString()});
@@ -182,14 +181,14 @@ mongodb.connect(dbURL, dbOptions)
 	// record the response time
 	app.use(responseTime());
 
-	// compress some responses
-	app.use(compression());
-
 	// write access log
 	// TODO: think about logrotate & make file path configurable
 	app.use(morgan("combined", {
 		stream: fs.createWriteStream(path.join(__dirname, "log", "access.log"), {flags: "a"})
 	}));
+
+	// compress some responses
+	app.use(compression());
 
 	// mount mqttdb router
 	app.use("/", router);

@@ -17,7 +17,7 @@ if (cluster.isMaster) {
 		if (!shutdown) {
 			let restart = 1000 + Math.ceil(Math.random() * 1000);
 			debug(`Worker #${worker.id} (PID ${worker.process.pid}) died${(signal)?(` with signal ${signal}`):("")}. Restarting in ${restart}ms`);
-			setTimeout(() => { cluster.fork() }, restart);
+			setTimeout(() => { cluster.fork(); }, restart);
 		}
 	});
 

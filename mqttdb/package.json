@@ -14,5 +14,8 @@
     "mqtt": "~2",
     "response-time": "~2"
   },
-  "scripts": {}
+  "scripts": {},
+  "devDependencies": {
+    "eslint": "~3"
+  }
 }
