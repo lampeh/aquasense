@@ -15,7 +15,7 @@ if (cluster.isMaster) {
 
 	cluster.on("exit", (worker, code, signal) => {
 		if (!shutdown) {
-			let restart = 1000 + Math.ceil(Math.random() * 1000);
+			const restart = 1000 + Math.ceil(Math.random() * 1000);
 			debug(`Worker #${worker.id} (PID ${worker.process.pid}) died${(signal)?(` with signal ${signal}`):("")}. Restarting in ${restart}ms`);
 			setTimeout(() => { cluster.fork(); }, restart);
 		}
@@ -28,7 +28,7 @@ if (cluster.isMaster) {
 
 	process.on("SIGHUP", () => {
 		debug("SIGHUP received. Reloading workers");
-		Object.keys(cluster.workers).forEach(id => {
+		Object.keys(cluster.workers).forEach((id) => {
 			debug(`Reloading worker #${id}`);
 			cluster.workers[id].kill("SIGHUP");
 		});

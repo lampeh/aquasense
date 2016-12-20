@@ -85,7 +85,7 @@ mongodb.connect(dbURL, dbOptions)
 		});
 
 		// TODO: think again about ESI/XSS. allow only a restricted character set for now
-		res.send(`[${req.params[0].split(",").map(key => `<esi:include src="/${key.replace(/[^a-z0-9_/-]+/gi, "")}"/>`).join(",")}]`);
+		res.send(`[${req.params[0].split(",").map((key) => `<esi:include src="/${key.replace(/[^a-z0-9_/-]+/gi, "")}"/>`).join(",")}]`);
 	});
 
 	// retrieve data
@@ -94,7 +94,7 @@ mongodb.connect(dbURL, dbOptions)
 		"/:topic(*)/:cmd(diff|past)/:base([0-9]+)",
 		"/:topic(*)"
 	], (req, res, next) => {
-		let query = {topic: req.params.topic};
+		const query = {topic: req.params.topic};
 
 		switch (req.params.cmd) {
 			case "diff":
@@ -115,7 +115,7 @@ mongodb.connect(dbURL, dbOptions)
 				break;
 		}
 
-		let cursor = coll.find(query, {topic: 0, _id: 0}).sort({createdAt: 1});
+		const cursor = coll.find(query, {topic: 0, _id: 0}).sort({createdAt: 1});
 
 		cursor.hasNext()
 		.then((hasNext) => {
@@ -130,7 +130,7 @@ mongodb.connect(dbURL, dbOptions)
 				// maybe put a corking buffer between the pipes
 				// varnish un-chunks & gzips the response, anyway
 
-				cursor.stream({transform: doc => {
+				cursor.stream({transform: (doc) => {
 					try {
 						return [doc.createdAt.getTime(), doc.message];
 					} catch(err) {
@@ -194,7 +194,7 @@ mongodb.connect(dbURL, dbOptions)
 	app.use("/", router);
 
 	// TODO: cluster IPC disconnect should kill the server(s) after timeout
-	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map(host => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
+	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
 
 /*
 	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map(host => new Promise((resolve, reject) => {

@@ -21,6 +21,21 @@ module.exports = {
             "error",
             "always"
         ],
-        "no-console": "off"
+        "no-console": "off",
+        "prefer-arrow-callback": "warn",
+        "prefer-const": "warn",
+        "prefer-numeric-literals": "warn",
+        "prefer-rest-params": "warn",
+        "prefer-spread": "warn",
+        "prefer-template": "warn",
+        "arrow-body-style": "warn",
+        "arrow-parens": "warn",
+        "arrow-spacing": "warn",
+        "no-confusing-arrow": "warn",
+        "no-duplicate-imports": "warn",
+        "no-duplicate-imports": "warn",
+        "no-useless-computed-key": "warn",
+        "no-useless-constructor": "warn",
+        "no-var": "warn"
     }
 };

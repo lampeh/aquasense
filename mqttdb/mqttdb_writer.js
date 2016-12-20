@@ -47,7 +47,7 @@ mongodb.connect(dbURL, dbOptions)
 	});
 
 	client.on("message", (topic, msg) => {
-		let message = msg.toString();
+		const message = msg.toString();
 		debug("Message:", topic, message);
 
 		coll.insert({
