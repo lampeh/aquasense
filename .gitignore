@@ -2,4 +2,4 @@ mqttdb/config/production.json
 mqttdb/node_modules/
 web/node_modules/
 web/bower_components/
-
+web/dist/

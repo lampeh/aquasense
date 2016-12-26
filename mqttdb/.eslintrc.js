@@ -43,6 +43,9 @@ module.exports = {
         "dot-location": [ "warn", "property" ],
         "eqeqeq": "warn",
         "no-multi-spaces": "warn",
+        "no-prototype-builtins": "warn",
+        "no-template-curly-in-string": "warn",
+        "no-unsafe-negation": "warn",
         "strict": "error"
     }
 };
