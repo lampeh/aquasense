@@ -80,18 +80,10 @@ module.exports = function(grunt) {
 
 		uglify: {
 			options: {
-//				preserveComments: /(?:^!|@(?:license|preserve|cc_on))/,
+				preserveComments: /(?:^!|@(?:license|preserve|cc_on))/,
 				banner: '/*! <%= gitinfo.describe %> */\n'
 			},
-/*
-			test: {
-				files: {
-					'dist/foo.js': [
-						'src/js/misc/chart_sensors.js'
-					]
-				}
-			},
-*/
+
 			all: {
 				files: [{
 					expand: true,
