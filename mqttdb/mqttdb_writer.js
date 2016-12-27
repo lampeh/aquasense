@@ -28,17 +28,14 @@ mongodb.connect(dbURL, dbOptions)
 		if (err) {
 			reject(err);
 		} else {
-			resolve(coll);
+			coll.createIndex({topic: 1, createdAt: 1})
+			.then((name) => {
+				debug("Index created:", name);
+				resolve(coll);
+			})
+			.catch(reject);
 		}
 	});
-}))
-.then((coll) => new Promise((resolve, reject) => {
-	coll.createIndex({topic: 1, createdAt: 1})
-	.then((name) => {
-		debug("Index created:", name);
-		resolve(coll);
-	})
-	.catch(reject);
 }))
 .then((coll) => new Promise((resolve, reject) => {
 	const client = mqtt.connect(mqttURL, {
