@@ -7,6 +7,7 @@ const JSONStream = require("JSONStream");
 
 const debug = require("debug")(`mqttdb:httpd:router:${process.id || process.pid}`);
 
+
 module.exports = ((coll) => {
 	const router = express.Router();
 
@@ -46,7 +47,7 @@ module.exports = ((coll) => {
 		});
 
 		// TODO: think again about ESI/XSS. allow only a restricted character set for now
-		res.send(`[${req.params[0].split(",").map((key) => `<esi:include src="/${key.replace(/[^a-z0-9_/-]+/gi, "")}"/>`).join(",")}]`);
+		res.send(`[${req.params[0].split(",").map((key) => `<esi:include src="${req.baseUrl}/${key.replace(/[^a-z0-9_/-]+/gi, "")}"/>`).join(",")}]`);
 	});
 
 	// retrieve data
