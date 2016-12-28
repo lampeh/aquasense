@@ -66,6 +66,9 @@ mongodb.connect(dbURL, dbOptions)
 	// compress some responses
 	app.use(compression());
 
+	// overlay static files
+	app.use(express.static(path.join(__dirname, "..", "web", "dist"), {maxAge: "1h"}));
+
 	// mount mqttdb router
 	app.use("/", mqttdb_httpd_router(coll));
 
