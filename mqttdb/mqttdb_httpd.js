@@ -1,6 +1,7 @@
 "use strict";
 
 const path = require("path");
+const http = require("http");
 
 const syslog = require("modern-syslog");
 
@@ -73,43 +74,60 @@ mongodb.connect(dbURL, dbOptions)
 	app.use("/", mqttdb_httpd_router(coll));
 
 	// TODO: cluster IPC disconnect should kill the server(s) after timeout
-	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
+//	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
 
-/*
-	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map(host => new Promise((resolve, reject) => {
+	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve, reject) => {
 		const server = http.createServer(app);
 
-		server.on("listening", resolve);
+		server.on("listening", () => {
+			resolve([null, server]);
+		});
 
 		server.on("error", (err) => {
-			if (err.code === "EADDRINUSE") {
+/*
+			if (err.code === "EADDRINUSE" || err.code === "EADDRNOTAVAIL") {
 				let retry = 1000 + Math.floor(Math.random() * 1000);
-				debug(`Address ${host}:${appPort} already in use. Retrying in ${retry}ms`);
+
+				debug(`Address ${err.address}:${err.port} not available. Retrying in ${retry}ms`);
+
 				setTimeout(() => {
+//server.listeners("listening").forEach((f) => debug(f.toString()));
+					server.removeAllListeners("listening"); // TODO: think again. something adds a "listening" listener on every server.listen()
 					server.close(() => server.listen(appPort, host));
 				}, retry);
 			} else {
-				// TODO: think again. "error" could occur after "listening"
-				reject(err);
+				debug(`Error in listener ${host}:${appPort}`);
+				debug(err);
 			}
-		})
-
-		return server.listen(appPort, host);
-	})));
 */
+
+			debug(`Error in listener ${host}:${appPort}`);
+			debug(err);
+
+			// TODO: think again. "error" could occur after "listening"
+			resolve([err, server]);
+		});
+
+		return server.listen(appPort, host); // TODO: think again. maybe use resolve/reject, chain the promise and return map result later?
+	})));
 })
-.then(() => {
-	debug("All listeners started");
+.then((results) => {
+	const errors = results.filter(([err]) => err);
+	const listeners = results.length - errors.length;
+
+	errors.forEach(([, server]) => server.close());
+
+	if (!listeners) {
+		throw new Error("No active listeners");
+	}
+
+	debug(`${listeners} listener(s) started. ${errors.length} error(s)`);
 })
 .catch((err) => {
-	if (err.code === "EADDRINUSE" || err.code === "EADDRNOTAVAIL") {
-		debug(`Address ${err.address}:${err.port} not available`);
-	} else {
-		debug("Fatal error");
-		debug(err.toString());
-		console.error(err);
-		process.exit(1);
-	}
+	debug("Fatal error");
+	debug(err.toString());
+	console.error(err);
+	process.exit(1);
 });
 
 };
