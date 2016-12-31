@@ -1,7 +1,8 @@
 "use strict";
 
-const fs = require("fs");
 const path = require("path");
+
+const syslog = require("modern-syslog");
 
 const express = require("express");
 const morgan = require("morgan");
@@ -57,10 +58,9 @@ mongodb.connect(dbURL, dbOptions)
 	// record the response time
 	app.use(responseTime());
 
-	// write access log
-	// TODO: think about logrotate & make file path configurable
+	// write access logs to syslog
 	app.use(morgan("combined", {
-		stream: fs.createWriteStream(path.join(__dirname, "log", "access.log"), {flags: "a"})
+		stream: new syslog.Stream(syslog.level.LOG_INFO, syslog.facility.LOG_LOCAL4)
 	}));
 
 	// compress some responses

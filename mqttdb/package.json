@@ -9,6 +9,7 @@
     "cors": "~2",
     "debug": "~2",
     "express": "~4",
+    "modern-syslog": "~1",
     "mongodb": "~2",
     "morgan": "~1",
     "mqtt": "~2",
