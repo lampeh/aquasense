@@ -17,7 +17,6 @@ module.exports = {
         "no-confusing-arrow": "warn",
         "no-console": "off",
         "no-duplicate-imports": "warn",
-        "no-duplicate-imports": "warn",
         "no-multi-spaces": "warn",
         "no-prototype-builtins": "warn",
         "no-template-curly-in-string": "warn",
