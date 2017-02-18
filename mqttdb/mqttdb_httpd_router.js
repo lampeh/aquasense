@@ -59,22 +59,22 @@ module.exports = ((coll) => {
 		const query = {topic: req.params.topic};
 
 		switch (req.params.cmd) {
-			case "diff":
-				debug("Diff:", req.params.topic, req.params.base, req.params.end);
-				query.createdAt = {$gt: new Date(parseInt(req.params.base))};
-				if (req.params.end) {
-					query.createdAt.$lt = new Date(parseInt(req.params.end));
-				}
-				break;
+		case "diff":
+			debug("Diff:", req.params.topic, req.params.base, req.params.end);
+			query.createdAt = {$gt: new Date(parseInt(req.params.base))};
+			if (req.params.end) {
+				query.createdAt.$lt = new Date(parseInt(req.params.end));
+			}
+			break;
 
-			case "past":
-				debug("Past:", req.params.topic, req.params.base);
-				query.createdAt = {$gt: new Date(Date.now() - parseInt(req.params.base))};
-				break;
+		case "past":
+			debug("Past:", req.params.topic, req.params.base);
+			query.createdAt = {$gt: new Date(Date.now() - parseInt(req.params.base))};
+			break;
 
-			default:
-				debug("Full:", req.params.topic);
-				break;
+		default:
+			debug("Full:", req.params.topic);
+			break;
 		}
 
 		const cursor = coll.find(query, {topic: 0, _id: 0}).sort({createdAt: 1});

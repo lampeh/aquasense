@@ -32,104 +32,103 @@ const dbCollection = config.db.collection || "mqttdb";
 // TODO: no longer required. maybe remove this
 module.exports = () => {
 
-// TODO: "Topology was destroyed" errors not handled, reconnect
+	// TODO: "Topology was destroyed" errors not handled, reconnect
 
-mongodb.connect(dbURL, dbOptions)
-.then((db) => new Promise((resolve, reject) => {
-	debug("MongoDB connected");
+	mongodb.connect(dbURL, dbOptions)
+	.then((db) => new Promise((resolve, reject) => {
+		debug("MongoDB connected");
 
-	// db.collection() requires a callback in strict-mode
-	// TODO: think again. maybe there's a reason to it
-	db.collection(dbCollection, {strict: true}, (err, coll) => {
-		if (err) {
-			reject(err);
-		} else {
-			resolve(coll);
-		}
-	});
-}))
-.then((coll) => {
-	const app = express();
-
-	app.disable("etag"); // use Last-Modified only
-	app.disable("query parser");
-	app.disable("x-powered-by");
-	app.enable("strict routing");
-
-	// record the response time
-	app.use(responseTime());
-
-	// write access logs to syslog
-	app.use(morgan("combined", {
-		stream: new syslog.Stream(syslog.level.LOG_INFO, syslog.facility.LOG_LOCAL4)
-	}));
-
-	// compress some responses
-	app.use(compression());
-
-	// overlay static files
-	app.use(express.static(path.join(__dirname, "..", "web", "dist"), {maxAge: "1h"}));
-
-	// mount mqttdb router
-	app.use("/", mqttdb_httpd_router(coll));
-
-	// TODO: cluster IPC disconnect should kill the server(s) after timeout
-//	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
-
-	return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve, reject) => {
-		const server = http.createServer(app);
-
-		server.on("listening", () => {
-			resolve([null, server]);
-		});
-
-		server.on("error", (err) => {
-/*
-			if (err.code === "EADDRINUSE" || err.code === "EADDRNOTAVAIL") {
-				let retry = 1000 + Math.floor(Math.random() * 1000);
-
-				debug(`Address ${err.address}:${err.port} not available. Retrying in ${retry}ms`);
-
-				setTimeout(() => {
-//server.listeners("listening").forEach((f) => debug(f.toString()));
-					server.removeAllListeners("listening"); // TODO: think again. something adds a "listening" listener on every server.listen()
-					server.close(() => server.listen(appPort, host));
-				}, retry);
+		// db.collection() requires a callback in strict-mode
+		// TODO: think again. maybe there's a reason to it
+		db.collection(dbCollection, {strict: true}, (err, coll) => {
+			if (err) {
+				reject(err);
 			} else {
-				debug(`Error in listener ${host}:${appPort}`);
-				debug(err);
+				resolve(coll);
 			}
+		});
+	}))
+	.then((coll) => {
+		const app = express();
+
+		app.disable("etag"); // use Last-Modified only
+		app.disable("query parser");
+		app.disable("x-powered-by");
+		app.enable("strict routing");
+
+		// record the response time
+		app.use(responseTime());
+
+		// write access logs to syslog
+		app.use(morgan("combined", {
+			stream: new syslog.Stream(syslog.level.LOG_INFO, syslog.facility.LOG_LOCAL4)
+		}));
+
+		// compress some responses
+		app.use(compression());
+
+		// overlay static files
+		app.use(express.static(path.join(__dirname, "..", "web", "dist"), {maxAge: "1h"}));
+
+		// mount mqttdb router
+		app.use("/", mqttdb_httpd_router(coll));
+
+		// TODO: cluster IPC disconnect should kill the server(s) after timeout
+//		return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve, reject) => app.listen(appPort, host, resolve).on("error", reject))));
+
+		return Promise.all((Array.isArray(appHost) ? appHost : [appHost]).map((host) => new Promise((resolve) => {
+			const server = http.createServer(app);
+
+			server.on("listening", () => {
+				resolve([null, server]);
+			});
+
+			server.on("error", (err) => {
+/*
+				if (err.code === "EADDRINUSE" || err.code === "EADDRNOTAVAIL") {
+					let retry = 1000 + Math.floor(Math.random() * 1000);
+
+					debug(`Address ${err.address}:${err.port} not available. Retrying in ${retry}ms`);
+
+					setTimeout(() => {
+//server.listeners("listening").forEach((f) => debug(f.toString()));
+						server.removeAllListeners("listening"); // TODO: think again. something adds a "listening" listener on every server.listen()
+						server.close(() => server.listen(appPort, host));
+					}, retry);
+				} else {
+					debug(`Error in listener ${host}:${appPort}`);
+					debug(err);
+					}
 */
 
-			debug(`Error in listener ${host}:${appPort}`);
-			debug(err);
+				debug(`Error in listener ${host}:${appPort}`);
+				debug(err);
 
-			// TODO: think again. "error" could occur after "listening"
-			resolve([err, server]);
-		});
+				// TODO: think again. "error" could occur after "listening"
+				resolve([err, server]);
+			});
 
-		return server.listen(appPort, host); // TODO: think again. maybe use resolve/reject, chain the promise and return map result later?
-	})));
-})
-.then((results) => {
-	const errors = results.filter(([err]) => err);
-	const listeners = results.length - errors.length;
+			return server.listen(appPort, host); // TODO: think again. maybe use resolve/reject, chain the promise and return map result later?
+		})));
+	})
+	.then((results) => {
+		const errors = results.filter(([err]) => err);
+		const listeners = results.length - errors.length;
 
-	errors.forEach(([, server]) => server.close());
+		errors.forEach(([, server]) => server.close());
 
-	if (!listeners) {
-		throw new Error("No active listeners");
-	}
+		if (!listeners) {
+			throw new Error("No active listeners");
+		}
 
-	debug(`${listeners} listener(s) started. ${errors.length} error(s)`);
-})
-.catch((err) => {
-	debug("Fatal error");
-	debug(err.toString());
-	console.error(err);
-	process.exit(1);
-});
-
+		debug(`${listeners} listener(s) started. ${errors.length} error(s)`);
+	})
+	.catch((err) => {
+		debug("Fatal error");
+		debug(err.toString());
+		console.error(err);
+		process.exit(1);
+	});
 };
 
 // run stand-alone if not require'd
