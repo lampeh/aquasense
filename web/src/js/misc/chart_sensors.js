@@ -112,7 +112,7 @@ $(document).ready(function() {
 			yUnits: {
 				yaxis: {
 					tickFormatter: function(val, axis) {
-						return ((val > 0)?("+"):("")) + parseFloat(val).toFixed(axis.tickDecimals) + config["yUnits"];
+						return ((val > 0)?((config["yPositive"] !== undefined) ? (config["yPositive"]) : ("+")):("")) + parseFloat(val).toFixed(axis.tickDecimals) + config["yUnits"];
 					}
 				}
 			},
@@ -126,6 +126,12 @@ $(document).ready(function() {
 			xAxis: {
 				xaxis: {
 					show: config["xAxis"]
+				}
+			},
+
+			yTickDecimals: {
+				yaxis: {
+					tickDecimals: config["yTickDecimals"]
 				}
 			},
 
@@ -177,9 +183,11 @@ $(document).ready(function() {
 				id: key,
 				color: sensors[i][key].color || idx,
 				label: sensors[i][key].label || key,
-				url: (sensors[i][key].url || key) + ((config["suffix"])?(config["suffix"]):(""))
+				url: (sensors[i][key].url || key) + ((config["suffix"])?(config["suffix"]):("")),
+				factor: (sensors[i][key].factor !== undefined) ? (sensors[i][key].factor) : (1)
 			};
 		});
+
 
 		function updatePlot() {
 			plot.setData(series);
@@ -314,7 +322,7 @@ console.warn("Bug? No duplicate point at end of data in updateGraphData");
 									// update data sequentially, convert all values to doubles
 									// TODO: maybe make addData accept bulk updates
 									data.forEach(function(record) {
-										addData(idx, [record[0], parseFloat(record[1])]);
+										addData(idx, [record[0], parseFloat(record[1]) * series[idx].factor]);
 									});
 
 									// check for more recent updates
@@ -333,7 +341,7 @@ console.warn("Bug? No duplicate point at end of data in updateGraphData");
 
 								// convert all values to doubles
 								series[idx].data = data.map(function(record) {
-									return [record[0], parseFloat(record[1])];
+									return [record[0], parseFloat(record[1]) * series[idx].factor];
 								});
 
 								// request first diff
