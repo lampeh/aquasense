@@ -3,7 +3,9 @@
 const mongodb = require("mongodb").MongoClient;
 const mqtt = require("mqtt");
 
-const debug = require("debug")("mqttdb:writer");
+// const debug = require("debug")("mqttdb:writer");
+const log = require("winston");
+log.level = process.env.LOG_LEVEL || "debug";
 
 const config = require("config").get("mqttdb");
 
@@ -19,18 +21,20 @@ const mqttUser = config.mqtt.user || undefined;
 const mqttPassword = config.mqtt.password || undefined;
 
 
+log.info("Starting MQTT DB writer task");
+
 mongodb.connect(dbURL, dbOptions)
 .then((db) => new Promise((resolve, reject) => {
 	// db.collection() requires a callback in strict-mode
 	// TODO: think again. maybe there's a reason to it
-	debug("MongoDB connected");
+	log.info("MongoDB connected");
 	db.collection(dbCollection, {strict: true}, (err, coll) => {
 		if (err) {
 			reject(err);
 		} else {
 			coll.createIndex({topic: 1, createdAt: 1})
 			.then((name) => {
-				debug("Index created:", name);
+				log.debug("Index created:", name);
 				resolve(coll);
 			})
 			.catch(reject);
@@ -45,7 +49,7 @@ mongodb.connect(dbURL, dbOptions)
 
 	client.on("message", (topic, msg) => {
 		const message = msg.toString();
-		debug("Message:", topic, message);
+		log.debug("Message:", topic, message);
 
 		coll.insert({
 			topic: topic,
@@ -53,32 +57,32 @@ mongodb.connect(dbURL, dbOptions)
 			createdAt: new Date()
 		})
 		.catch((err) => {
-			debug("Insert error:", err);
+			log.warn("Insert error:", err);
 		});
 	});
 
 	client.on("reconnect", () => {
-		debug(`Reconnecting to MQTT${(mqttURL)?(` at ${mqttURL}`):("")}`);
+		log.debug(`Reconnecting to MQTT${(mqttURL)?(` at ${mqttURL}`):("")}`);
 	});
 
 	client.on("error", (err) => {
-		debug(`Error from MQTT${(mqttURL)?(` at ${mqttURL}`):("")}`);
+		log.warn(`Error from MQTT${(mqttURL)?(` at ${mqttURL}`):("")}`);
 		// TODO: think again. "error" could occur after "connect"
 		reject(err);
 	});
 
 	client.on("connect", () => {
-		debug(`MQTT connected${(mqttURL)?(` to ${mqttURL}`):("")}`);
+		log.info(`MQTT connected${(mqttURL)?(` to ${mqttURL}`):("")}`);
+		log.debug(`Subscribing patterns: ${mqttPattern}`);
 		client.subscribe(mqttPattern, {qos: 2});
 		resolve(client);
 	});
 }))
 .then(() => {
-	debug("MQTT client started");
+	log.debug("MQTT client started");
 })
 .catch((err) => {
-	debug("Fatal error");
-	debug(err.toString());
+	log.error("Fatal error: ", err.toString());
 	console.error(err);
 	process.exit(1);
 });

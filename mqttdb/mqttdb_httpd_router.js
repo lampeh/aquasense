@@ -5,7 +5,9 @@ const cors = require("cors");
 
 const JSONStream = require("JSONStream");
 
-const debug = require("debug")(`mqttdb:httpd:router:${process.id || process.pid}`);
+//const debug = require("debug")(`mqttdb:httpd:router:${process.id || process.pid}`);
+const log = require("winston");
+log.level = process.env.LOG_LEVEL || "debug";
 
 
 module.exports = ((coll) => {
@@ -32,7 +34,7 @@ module.exports = ((coll) => {
 
 	// generate ESI template
 	router.get("/combine/*", (req, res) => {
-		debug("Combine:", req.params[0]);
+		log.debug("Combine:", req.params[0]);
 
 		// TODO: force compression even on short response
 		// because compression middleware adds Vary: Accept-Encoding
@@ -53,14 +55,15 @@ module.exports = ((coll) => {
 	// retrieve data
 	router.get([
 		"/:topic(*)/:cmd(diff)/:base([0-9]+)/:end([0-9]+)",
-		"/:topic(*)/:cmd(diff|past)/:base([0-9]+)",
+		"/:topic(*)/:cmd(diff|past|last)/:base([0-9]+)",
 		"/:topic(*)"
 	], (req, res, next) => {
 		const query = {topic: req.params.topic};
+		var queryLimit = 0;
 
 		switch (req.params.cmd) {
 		case "diff":
-			debug("Diff:", req.params.topic, req.params.base, req.params.end);
+			log.debug("Diff:", req.params.topic, req.params.base, req.params.end);
 			query.createdAt = {$gt: new Date(parseInt(req.params.base))};
 			if (req.params.end) {
 				query.createdAt.$lt = new Date(parseInt(req.params.end));
@@ -68,22 +71,39 @@ module.exports = ((coll) => {
 			break;
 
 		case "past":
-			debug("Past:", req.params.topic, req.params.base);
+			log.debug("Past:", req.params.topic, req.params.base);
 			query.createdAt = {$gt: new Date(Date.now() - parseInt(req.params.base))};
 			break;
 
+		case "last":
+			log.debug("Last:", req.params.topic, req.params.base);
+			queryLimit = parseInt(req.params.base);
+			break;
+
 		default:
-			debug("Full:", req.params.topic);
+			log.debug("Full:", req.params.topic);
 			break;
 		}
 
-		const cursor = coll.find(query, {topic: 0, _id: 0}).sort({createdAt: 1});
+
+		var cursor;
+
+		if (queryLimit) {
+			cursor = coll.find(query, {topic: 0, _id: 0}).sort({createdAt: -1}).limit(queryLimit);
+		} else {
+			cursor = coll.find(query, {topic: 0, _id: 0}).sort({createdAt: 1});
+		}
 
 		cursor.hasNext()
 		.then((hasNext) => {
 			if (hasNext) {
 				// client loops over cached diffs, so the proxy can keep them
-				res.set("Cache-Control", "max-age=120, s-maxage=300, public");
+				if (!queryLimit) {
+//					res.set("Cache-Control", "max-age=120, s-maxage=300, public");
+					res.set("Cache-Control", "max-age=30, public");
+				} else {
+					res.set("Cache-Control", "max-age=10, s-maxage=10, public");
+				}
 
 				// TODO: no Last-Modified header. maybe fetch last record first
 				// or rewrite frontend to use reverse sort order
@@ -93,24 +113,24 @@ module.exports = ((coll) => {
 				// varnish un-chunks & gzips the response, anyway
 
 				const start = Date.now();
-				let results = 0;
+				var results = 0;
 
 				cursor.stream({transform: (doc) => {
 					results++;
 					try {
 						return [doc.createdAt.getTime(), doc.message];
 					} catch(err) {
-						debug("Error in result stream:", err);
+						log.warn("Error in result stream:", err);
 						return undefined;
 					}
 				}})
 				.pipe(JSONStream.stringify())
 				.pipe(res)
 				.on("finish", () => {
-					debug(`${results} result(s) sent in ${Date.now() - start}ms`);
+					log.debug(`${results} result(s) sent in ${Date.now() - start}ms`);
 				});
 			} else {
-				// debug("No results");
+				// log.debug("No results");
 
 				// enable conditional requests on empty diffs
 				// TODO: think again: why?
@@ -128,7 +148,7 @@ module.exports = ((coll) => {
 
 	// return errors as JSON
 	router.use((err, req, res, next) => {
-		debug("Error in response:", err);
+		log.warn("Error in response:", err);
 
 		if (res.headersSent) {
 			return next(err);
